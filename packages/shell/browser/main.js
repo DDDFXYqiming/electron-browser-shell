@@ -6,6 +6,7 @@ const { ElectronChromeExtensions } = require('electron-chrome-extensions')
 const { setupMenu } = require('./menu')
 const { buildChromeContextMenu } = require('electron-chrome-context-menu')
 const { installChromeWebStore, loadAllExtensions } = require('electron-chrome-web-store')
+const settings = require('./settings')
 
 // https://www.electronforge.io/config/plugins/webpack#main-process-code
 const SHELL_ROOT_DIR = path.join(__dirname, '../../')
@@ -47,6 +48,11 @@ class TabbedBrowserWindow {
 
     const webuiUrl = `chrome-extension://${webuiExtensionId}/webui.html`
     this.webContents.loadURL(webuiUrl)
+    // Keep keyboard focus on the browser chrome (tab strip / address bar) by
+    // default; clicking a tab page hands focus back to that page naturally.
+    this.webContents.on('did-finish-load', () => {
+      if (!this.window.isDestroyed()) this.webContents.focus()
+    })
 
     this.tabs = new Tabs(this.window)
 
@@ -56,7 +62,11 @@ class TabbedBrowserWindow {
       tab.loadURL(options.urls.newtab)
 
       // Track tab that may have been created outside of the extensions API.
-      self.extensions.addTab(tab.webContents, tab.window)
+      try {
+        self.extensions.addTab(tab.webContents, tab.window)
+      } catch (error) {
+        console.error('[luma] addTab failed', error)
+      }
     })
 
     this.tabs.on('tab-selected', function onTabSelected(tab) {
@@ -139,6 +149,7 @@ class Browser {
   async init() {
     this.initSession()
     setupMenu(this)
+    settings.setup(this, () => webuiExtensionId)
 
     if ('registerPreloadScript' in this.session) {
       this.session.registerPreloadScript({
@@ -286,30 +297,29 @@ class Browser {
   }
 
   createWindow(options) {
+    const windowOptions = {
+      width: 1280,
+      height: 720,
+      frame: false,
+      titleBarStyle: 'hidden',
+      webPreferences: {
+        sandbox: true,
+        nodeIntegration: false,
+        enableRemoteModule: false,
+        contextIsolation: true,
+        worldSafeExecuteJavaScript: true,
+      },
+      ...settings.getWindowOptions(),
+    }
+
     const win = new TabbedBrowserWindow({
       ...options,
       urls: this.urls,
       extensions: this.extensions,
-      window: {
-        width: 1280,
-        height: 720,
-        frame: false,
-        titleBarStyle: 'hidden',
-        titleBarOverlay: {
-          height: 31,
-          color: '#39375b',
-          symbolColor: '#ffffff',
-        },
-        webPreferences: {
-          sandbox: true,
-          nodeIntegration: false,
-          enableRemoteModule: false,
-          contextIsolation: true,
-          worldSafeExecuteJavaScript: true,
-        },
-      },
+      window: windowOptions,
     })
     this.windows.push(win)
+    settings.applyToWindow(win.window)
 
     if (process.env.SHELL_DEBUG) {
       win.webContents.openDevTools({ mode: 'detach' })
