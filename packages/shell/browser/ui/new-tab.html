@@ -3,29 +3,42 @@
   <head>
     <meta charset="utf-8" />
     <title>New Tab</title>
-    <style>
-      body {
-        font-size: 16px;
-      }
-    </style>
+    <link rel="stylesheet" href="./new-tab.css" />
   </head>
   <body>
-    <h1>New Tab</h1>
-    <ul>
-      <li><a href="https://www.google.com">https://www.google.com</a></li>
-      <li><a href="https://www.youtube.com">https://www.youtube.com</a></li>
-      <li>
-        <a href="https://github.com/electron/electron">https://github.com/electron/electron</a>
-      </li>
-      <li>
-        <a href="https://github.com/samuelmaddock/electron-browser-shell"
-          >https://github.com/samuelmaddock/electron-browser-shell</a
-        >
-      </li>
-      <li><a href="https://chromewebstore.google.com">https://chromewebstore.google.com</a></li>
-      <li><a href="https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home">https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home</a></li>
-      <li><a href="https://permission.site">https://permission.site</a></li>
-      <li><a href="https://samuelmaddock.com">https://samuelmaddock.com</a></li>
-    </ul>
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none" aria-hidden="true">
+      <symbol id="nt-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.9" />
+        <path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+      </symbol>
+      <symbol id="nt-logo" viewBox="0 0 24 24">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.7" opacity="0.95" />
+        <path d="M7.5 8.6h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.5" />
+        <circle cx="12" cy="13.8" r="2.7" fill="currentColor" />
+      </symbol>
+    </svg>
+
+    <main class="page">
+      <div class="brand">
+        <svg aria-hidden="true"><use href="#nt-logo" /></svg>
+      </div>
+      <p class="tagline">Luma Browser</p>
+
+      <div class="search-box">
+        <svg aria-hidden="true"><use href="#nt-search" /></svg>
+        <input
+          id="search-input"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="Search the web or enter an address"
+        />
+      <span class="search-hint">Enter</span>
+      </div>
+
+      <nav class="shortcuts" id="shortcuts"></nav>
+    </main>
+
+    <script src="./new-tab.js"></script>
   </body>
 </html>
