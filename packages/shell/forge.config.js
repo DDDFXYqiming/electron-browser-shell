@@ -1,7 +1,14 @@
+const path = require('path')
+
+const ICON = path.resolve(__dirname, 'build', 'icon.ico')
+
 module.exports = {
   packagerConfig: {
-    name: 'Shell',
+    name: 'Luma Browser',
+    productName: 'Luma Browser',
+    executableName: 'LumaBrowser',
     asar: true,
+    icon: ICON,
     extraResource: ['browser/ui'],
   },
   rebuildConfig: {},
@@ -9,6 +16,15 @@ module.exports = {
     {
       name: '@electron-forge/maker-zip',
       platforms: ['darwin', 'win32'],
+    },
+    {
+      name: '@electron-forge/maker-squirrel',
+      platforms: ['win32'],
+      config: {
+        setupIcon: ICON,
+        setupExe: 'Luma Browser Setup.exe',
+        noMsi: true,
+      },
     },
     {
       name: '@electron-forge/maker-dmg',
