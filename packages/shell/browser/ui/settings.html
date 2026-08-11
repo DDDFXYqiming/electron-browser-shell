@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="./webui.css" />
+    <style>
+      html,
+      body {
+        background: transparent;
+        overflow: hidden;
+      }
+
+      body {
+        padding: 14px;
+        border-radius: 10px;
+        background: var(--elevated);
+        border: 1px solid var(--line);
+        height: 100%;
+      }
+
+      .settings-title {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+
+      .settings-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-2);
+        cursor: default;
+        transition: background-color 110ms ease, color 110ms ease;
+      }
+
+      .settings-close:hover {
+        background: var(--hover);
+        color: var(--text-1);
+      }
+
+      .settings-close svg {
+        width: 13px;
+        height: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="settings-header">
+      <span class="settings-title">Settings</span>
+      <button class="settings-close" id="settings-close" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">Theme</div>
+      <div class="segmented" id="theme-segmented">
+        <button data-value="system">System</button>
+        <button data-value="light">Light</button>
+        <button data-value="dark">Dark</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label">Accent color</div>
+      <div class="accent-grid" id="accent-grid">
+        <button class="accent-swatch" data-value="indigo" style="background: #5b5bd6" title="Indigo"></button>
+        <button class="accent-swatch" data-value="blue" style="background: #2f7cf6" title="Blue"></button>
+        <button class="accent-swatch" data-value="teal" style="background: #0e9488" title="Teal"></button>
+        <button class="accent-swatch" data-value="green" style="background: #22a06b" title="Green"></button>
+        <button class="accent-swatch" data-value="orange" style="background: #e8790f" title="Orange"></button>
+        <button class="accent-swatch" data-value="rose" style="background: #d6336c" title="Rose"></button>
+      </div>
+    </div>
+
+    <script src="./settings.js"></script>
+  </body>
+</html>
