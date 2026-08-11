@@ -8,3 +8,7 @@ node_modules
 noncompliant.txt
 yarn-error.log
 .DS_Store
+
+# 本地构建/运行日志与产物
+packages/shell/*.log
+packages/shell/release/

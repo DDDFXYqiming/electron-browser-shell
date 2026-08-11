@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "A minimal browser shell built on Electron.",
   "private": true,
-  "workspaces": [
-    "packages/shell",
-    "packages/electron-chrome-extensions",
-    "packages/electron-chrome-context-menu",
-    "packages/electron-chrome-web-store"
-  ],
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "nohoist": [
+      "**/shell/**",
+      "**/luma-browser/**"
+    ]
+  },
   "scripts": {
     "build": "yarn run build:context-menu && yarn run build:chrome-web-store && yarn run build:extensions && yarn run build:shell",
     "build:chrome-web-store": "yarn --cwd ./packages/electron-chrome-web-store build",
