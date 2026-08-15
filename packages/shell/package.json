@@ -9,7 +9,8 @@
     "start": "electron-forge start",
     "start:trace": "electron-forge start -- --trace-startup=\"*\" --trace-startup-file=\"$HOME/Desktop/trace.json\"",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "test": "node --test \"test/*.test.js\""
   },
   "license": "MIT",
   "author": "Samuel Maddock <sam@samuelmaddock.com>",
