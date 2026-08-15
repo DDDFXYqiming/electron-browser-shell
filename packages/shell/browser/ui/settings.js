@@ -1,14 +1,5 @@
-const ACCENTS = {
-  indigo: '#5b5bd6',
-  blue: '#2f7cf6',
-  teal: '#0e9488',
-  green: '#22a06b',
-  orange: '#e8790f',
-  rose: '#d6336c',
-}
-
 class SettingsUI {
-  settings = { theme: 'system', accent: 'indigo', effects: 'on' }
+  settings = { theme: 'system', accent: 'indigo' }
 
   constructor() {
     this.$.themeSegmented = document.getElementById('theme-segmented')
@@ -62,7 +53,6 @@ class SettingsUI {
         : this.settings.theme
 
     document.documentElement.dataset.theme = theme
-    document.body.dataset.effects = this.settings.effects
     document.documentElement.style.setProperty(
       '--accent',
       ACCENTS[this.settings.accent] || ACCENTS.indigo,

@@ -1,152 +1,34 @@
-const fs = require('fs')
-const os = require('os')
 const path = require('path')
 const { app, ipcMain, nativeTheme, BrowserWindow } = require('electron')
+const { SettingsStore } = require('./settings-store')
+const themeManager = require('./theme-manager')
+const { SettingsWindow } = require('./settings-window')
+const ACCENTS = require('./ui/accents.js')
 
-const DEFAULTS = {
-  theme: 'system',
-  accent: 'indigo',
-  effects: 'on',
-}
-
-const ACCENTS = {
-  indigo: '#5b5bd6',
-  blue: '#2f7cf6',
-  teal: '#0e9488',
-  green: '#22a06b',
-  orange: '#e8790f',
-  rose: '#d6336c',
-}
-
-const WIN11_MICA_BUILD = 22621
-
-let settings = { ...DEFAULTS }
-let settingsPath = ''
 let browser = null
 let getWebuiExtensionId = null
+let store = null
 let settingsWindow = null
+let ready = false
 
-function sanitize(patch = {}) {
-  const next = { ...settings }
-  if (['system', 'light', 'dark'].includes(patch.theme)) next.theme = patch.theme
-  if (ACCENTS[patch.accent]) next.accent = patch.accent
-  if (['on', 'off'].includes(patch.effects)) next.effects = patch.effects
-  return next
+function findTab(tabId, ownerWindow) {
+  if (!browser || !ownerWindow || ownerWindow.isDestroyed()) return null
+  const tab = ownerWindow.tabs?.tabList?.find(
+    (t) => t.webContents && t.webContents.id === tabId,
+  )
+  return tab && !tab.webContents.isDestroyed() ? tab : null
 }
 
-function load() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(settingsPath, 'utf8'))
-    settings = sanitize(raw)
-  } catch {
-    settings = { ...DEFAULTS }
-  }
-  // Glass material is always on — no user toggle.
-  settings.effects = 'on'
-}
-
-function save() {
-  try {
-    fs.mkdirSync(path.dirname(settingsPath), { recursive: true })
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
-  } catch (error) {
-    console.error('Failed to save settings:', error)
-  }
-}
-
-function isDark() {
-  if (settings.theme === 'dark') return true
-  if (settings.theme === 'light') return false
-  return nativeTheme.shouldUseDarkColors
-}
-
-function canUseMica() {
-  if (process.platform !== 'win32' || settings.effects !== 'on') return false
-  const build = Number(os.release().split('.')[2] || 0)
-  return build >= WIN11_MICA_BUILD
-}
-
-function material() {
-  return canUseMica() ? 'mica' : 'none'
-}
-
-function backgroundColor() {
-  return isDark() ? '#17191f' : '#f4f5f9'
-}
-
-function applyToWindow(win) {
-  if (!win || win.isDestroyed()) return
-  if (win === settingsWindow) return
-
-  try {
-    win.setBackgroundMaterial(material())
-  } catch {
-    // Unsupported platform / version — visual effects handled by CSS fallback.
-  }
-}
-
-function applyAll() {
-  for (const win of BrowserWindow.getAllWindows()) {
-    applyToWindow(win)
-  }
-}
-
-function broadcast() {
-  const state = {
-    theme: isDark() ? 'dark' : 'light',
-    accent: settings.accent,
-    effects: settings.effects,
-  }
-  for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.webContents.isDestroyed()) {
-      win.webContents.send('shell:theme-updated', state)
-    }
-  }
-  // Tab pages are separate WebContentsViews and need the theme forwarded too.
-  for (const win of browser?.windows || []) {
-    for (const tab of win.tabs.tabList) {
-      if (tab.webContents && !tab.webContents.isDestroyed()) {
-        tab.webContents.send('shell:theme-updated', state)
-      }
-    }
-  }
-}
-
-function getWindowOptions() {
-  return {
-    backgroundColor: backgroundColor(),
-    ...(canUseMica() ? { backgroundMaterial: 'mica' } : {}),
-  }
-}
-
-function findTab(tabId) {
-  if (!browser) return null
-  for (const win of browser.windows) {
-    const tab = win.tabs.tabList.find((t) => t.webContents && t.webContents.id === tabId)
-    if (tab && !tab.webContents.isDestroyed()) return tab
-  }
-  return null
-}
-
-function getNavigationState(tabId) {
-  const tab = findTab(tabId)
+function getNavigationState(tabId, ownerWindow) {
+  const tab = findTab(tabId, ownerWindow)
   if (!tab) return { canGoBack: false, canGoForward: false }
   const history = tab.webContents.navigationHistory
   return { canGoBack: history.canGoBack(), canGoForward: history.canGoForward() }
 }
 
-function stopNavigation(tabId) {
-  const tab = findTab(tabId)
+function stopNavigation(tabId, ownerWindow) {
+  const tab = findTab(tabId, ownerWindow)
   tab?.webContents.stop()
-}
-
-function positionSettingsWindow(parent) {
-  if (!settingsWindow || settingsWindow.isDestroyed() || !parent || parent.isDestroyed()) return
-  const pb = parent.getBounds()
-  const wb = settingsWindow.getBounds()
-  const x = pb.x + pb.width - wb.width - 12
-  const y = pb.y + 72
-  settingsWindow.setPosition(Math.round(x), Math.round(y))
 }
 
 function openSettingsPanel(owner) {
@@ -155,78 +37,39 @@ function openSettingsPanel(owner) {
       ? owner
       : BrowserWindow.getAllWindows().find((win) => !win.isDestroyed())
 
-  if (settingsWindow && !settingsWindow.isDestroyed()) {
-    positionSettingsWindow(parent)
-    settingsWindow.show()
-    settingsWindow.focus()
-    return
-  }
-
-  const webuiId = getWebuiExtensionId?.()
-  if (!webuiId) return
-
-  settingsWindow = new BrowserWindow({
-    width: 322,
-    height: 288,
-    frame: false,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    fullscreenable: false,
-    skipTaskbar: true,
-    show: false,
-    hasShadow: true,
-    backgroundColor: backgroundColor(),
-    webPreferences: {
-      sandbox: true,
-      nodeIntegration: false,
-      enableRemoteModule: false,
-      contextIsolation: true,
-      worldSafeExecuteJavaScript: true,
-    },
-  })
-
-  settingsWindow.setMenuBarVisibility(false)
-  settingsWindow.loadURL(`chrome-extension://${webuiId}/settings.html`)
-  settingsWindow.once('ready-to-show', () => {
-    positionSettingsWindow(parent)
-    settingsWindow?.show()
-    settingsWindow?.focus()
-  })
-  settingsWindow.on('blur', () => {
-    settingsWindow?.close()
-  })
-  settingsWindow.on('closed', () => {
-    settingsWindow = null
-  })
+  settingsWindow.open(parent, getWebuiExtensionId, themeManager.backgroundColor(store.get()))
 }
 
 function setup(browserRef, getWebuiId) {
   browser = browserRef
   getWebuiExtensionId = getWebuiId
-  settingsPath = path.join(app.getPath('userData'), 'settings.json')
+  settingsWindow = new SettingsWindow()
 
-  load()
-  nativeTheme.themeSource = settings.theme
+  store = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'))
+  store.load()
+  nativeTheme.themeSource = store.get().theme
 
-  ipcMain.handle('shell:get-settings', () => settings)
+  ipcMain.handle('shell:get-settings', () => store.get())
 
   ipcMain.handle('shell:set-settings', (_event, patch) => {
-    settings = sanitize(patch)
-    save()
-    nativeTheme.themeSource = settings.theme
-    applyAll()
-    broadcast()
-    return settings
+    const next = store.set(patch)
+    nativeTheme.themeSource = next.theme
+    themeManager.applyAll(next)
+    themeManager.broadcast(next, browser)
+    return next
   })
 
-  ipcMain.handle('shell:get-nav-state', (_event, tabId) => getNavigationState(tabId))
-  ipcMain.handle('shell:stop-navigation', (_event, tabId) => stopNavigation(tabId))
+  ipcMain.handle('shell:get-nav-state', (event, tabId) =>
+    getNavigationState(tabId, BrowserWindow.fromWebContents(event.sender)),
+  )
+  ipcMain.handle('shell:stop-navigation', (event, tabId) =>
+    stopNavigation(tabId, BrowserWindow.fromWebContents(event.sender)),
+  )
   ipcMain.handle('shell:open-settings', (event) => {
     openSettingsPanel(BrowserWindow.fromWebContents(event.sender))
   })
   ipcMain.handle('shell:close-settings', () => {
-    settingsWindow?.close()
+    settingsWindow.close()
   })
 
   ipcMain.on('shell:renderer-error', (_event, message) => {
@@ -234,9 +77,21 @@ function setup(browserRef, getWebuiId) {
   })
 
   nativeTheme.on('updated', () => {
-    applyAll()
-    broadcast()
+    themeManager.applyAll(store.get())
+    themeManager.broadcast(store.get(), browser)
   })
+
+  ready = true
+}
+
+function getWindowOptions() {
+  if (!ready) throw new Error('settings.setup() must be called before creating windows')
+  return themeManager.getWindowOptions(store.get())
+}
+
+function applyToWindow(win) {
+  if (!ready) throw new Error('settings.setup() must be called before applying window settings')
+  themeManager.applyToWindow(win, store.get())
 }
 
 module.exports = {
@@ -244,7 +99,7 @@ module.exports = {
   getWindowOptions,
   applyToWindow,
   get settings() {
-    return settings
+    return store ? store.get() : {}
   },
   ACCENTS,
 }
