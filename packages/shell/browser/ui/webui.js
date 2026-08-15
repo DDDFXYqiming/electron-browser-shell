@@ -1,20 +1,27 @@
-const ACCENTS = {
-  indigo: '#5b5bd6',
-  blue: '#2f7cf6',
-  teal: '#0e9488',
-  green: '#22a06b',
-  orange: '#e8790f',
-  rose: '#d6336c',
-}
+const MAX_TAB_QUERY_ATTEMPTS = 20
+const TAB_QUERY_RETRY_MS = 250
 
-const SEARCH_URL = 'https://www.bing.com/search?q='
+async function queryTabsWithRetry() {
+  let tabs = []
+  for (let attempt = 0; attempt < MAX_TAB_QUERY_ATTEMPTS; attempt++) {
+    try {
+      tabs = await new Promise((resolve) => chrome.tabs.query({ windowId: -2 }, resolve))
+    } catch (error) {
+      console.error('chrome.tabs.query failed:', error)
+      tabs = []
+    }
+    if (tabs && tabs.length > 0) break
+    await new Promise((resolve) => setTimeout(resolve, TAB_QUERY_RETRY_MS))
+  }
+  return tabs
+}
 
 class WebUI {
   windowId = -1
   activeTabId = -1
   /** @type {chrome.tabs.Tab[]} */
   tabList = []
-  settings = { theme: 'system', accent: 'indigo', effects: 'on' }
+  settings = { theme: 'system', accent: 'indigo' }
   systemDark = false
 
   constructor() {
@@ -133,7 +140,6 @@ class WebUI {
         : this.settings.theme
 
     document.documentElement.dataset.theme = theme
-    document.body.dataset.effects = this.settings.effects
     document.documentElement.style.setProperty(
       '--accent',
       ACCENTS[this.settings.accent] || ACCENTS.indigo,
@@ -144,17 +150,7 @@ class WebUI {
 
   async initTabs() {
     // Tabs may not be registered yet right after the page loads; retry briefly.
-    let tabs = []
-    for (let attempt = 0; attempt < 20; attempt++) {
-      try {
-        tabs = await new Promise((resolve) => chrome.tabs.query({ windowId: -2 }, resolve))
-      } catch (error) {
-        console.error('chrome.tabs.query failed:', error)
-        tabs = []
-      }
-      if (tabs && tabs.length > 0) break
-      await new Promise((resolve) => setTimeout(resolve, 250))
-    }
+    const tabs = await queryTabsWithRetry()
     this.tabList = [...tabs]
     this.renderTabs()
 
@@ -349,24 +345,13 @@ class WebUI {
   }
 
   submitAddress() {
-    const value = this.$.addressUrl.value.trim()
-    if (!value) return
-
-    let url = value
-    const looksLikeUrl =
-      /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value) ||
-      (/^[\w.-]+\.[a-zA-Z]{2,}(:\d+)?([/?#].*)?$/.test(value) && !/\s/.test(value))
-
-    if (!looksLikeUrl) {
-      url = SEARCH_URL + encodeURIComponent(value)
-    } else if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) {
-      url = 'https://' + value
-    }
+    const result = BROOKS_NAV.normalizeInput(this.$.addressUrl.value)
+    if (!result.url) return
 
     if (this.activeTabId > -1) {
-      chrome.tabs.update(this.activeTabId, { url })
+      chrome.tabs.update(this.activeTabId, { url: result.url })
     } else {
-      chrome.tabs.update({ url })
+      chrome.tabs.update({ url: result.url })
     }
   }
 }

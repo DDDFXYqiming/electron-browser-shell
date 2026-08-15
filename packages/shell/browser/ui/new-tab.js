@@ -1,5 +1,3 @@
-const SEARCH_URL = 'https://www.bing.com/search?q='
-
 const SHORTCUTS = [
   { name: 'Google', url: 'https://www.google.com', color: '#4285f4' },
   { name: 'YouTube', url: 'https://www.youtube.com', color: '#e62117' },
@@ -19,23 +17,6 @@ const SHORTCUTS = [
   { name: 'Samuel Maddock', url: 'https://samuelmaddock.com', color: '#7c3aed' },
 ]
 
-const ACCENTS = {
-  indigo: '#5b5bd6',
-  blue: '#2f7cf6',
-  teal: '#0e9488',
-  green: '#22a06b',
-  orange: '#e8790f',
-  rose: '#d6336c',
-}
-
-const FAVICON_SOURCES = [
-  (host) => `https://icons.duckduckgo.com/ip3/${host}.ico`,
-  (host) => `https://icon.horse/icon/${host}`,
-  (host) => `https://www.google.com/s2/favicons?domain=${host}&sz=64`,
-  (host) => `https://${host}/favicon.ico`,
-]
-const FAVICON_TIMEOUT_MS = 3500
-
 const domain = (url) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '')
@@ -45,43 +26,6 @@ const domain = (url) => {
 }
 
 const letter = (name) => (name || '?').trim().charAt(0).toUpperCase()
-
-const attachFavicon = (iconEl, letterEl, host) => {
-  const img = document.createElement('img')
-  img.className = 'shortcut-favicon'
-  img.alt = ''
-  let sourceIndex = 0
-  let timer = null
-
-  const clearTimer = () => {
-    if (timer) {
-      clearTimeout(timer)
-      timer = null
-    }
-  }
-
-  const nextSource = () => {
-    clearTimer()
-    sourceIndex += 1
-    if (sourceIndex >= FAVICON_SOURCES.length) {
-      img.remove()
-      return
-    }
-    timer = setTimeout(nextSource, FAVICON_TIMEOUT_MS)
-    img.src = FAVICON_SOURCES[sourceIndex](host)
-  }
-
-  img.addEventListener('load', () => {
-    clearTimer()
-    img.classList.add('loaded')
-    letterEl.classList.add('hidden')
-  })
-  img.addEventListener('error', nextSource)
-
-  timer = setTimeout(nextSource, FAVICON_TIMEOUT_MS)
-  img.src = FAVICON_SOURCES[0](host)
-  iconEl.appendChild(img)
-}
 
 const renderShortcuts = () => {
   const grid = document.getElementById('shortcuts')
@@ -104,7 +48,7 @@ const renderShortcuts = () => {
     if (item.color) {
       icon.style.background = `linear-gradient(145deg, ${item.color}, color-mix(in srgb, ${item.color} 72%, #000))`
     }
-    attachFavicon(icon, letterEl, domain(item.url))
+    LUMA_FAVICON.loadFavicon(icon, letterEl, domain(item.url))
 
     const name = document.createElement('span')
     name.className = 'shortcut-name'
@@ -120,21 +64,9 @@ const renderShortcuts = () => {
 }
 
 const navigateOrSearch = (value) => {
-  const text = value.trim()
-  if (!text) return
-
-  let url = text
-  const looksLikeUrl =
-    /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(text) ||
-    (/^[\w.-]+\.[a-zA-Z]{2,}(:\d+)?([/?#].*)?$/.test(text) && !/\s/.test(text))
-
-  if (!looksLikeUrl) {
-    url = SEARCH_URL + encodeURIComponent(text)
-  } else if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(text)) {
-    url = 'https://' + text
-  }
-
-  location.href = url
+  const result = BROOKS_NAV.normalizeInput(value)
+  if (!result.url) return
+  location.href = result.url
 }
 
 const applyTheme = (settings) => {
