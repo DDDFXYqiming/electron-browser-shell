@@ -14,19 +14,29 @@ if (isWebUI) {
   })
 }
 
-// Expose a small, safe bridge to the browser shell (settings + navigation).
+// Expose a small, safe bridge to the browser shell.
+// Only expose capabilities a given page actually needs, and let the main
+// process enforce tab ownership (see settings.js IPC handlers).
+const bridge: Record<string, unknown> = {
+  getSettings: () => ipcRenderer.invoke('shell:get-settings'),
+  setSettings: (patch: unknown) => ipcRenderer.invoke('shell:set-settings', patch),
+  onThemeUpdated: (callback: (state: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: unknown) => callback(state)
+    ipcRenderer.on('shell:theme-updated', listener)
+    return () => ipcRenderer.removeListener('shell:theme-updated', listener)
+  },
+}
+
+if (isWebUI) {
+  bridge.getNavigationState = (tabId: number) => ipcRenderer.invoke('shell:get-nav-state', tabId)
+  bridge.stopNavigation = (tabId: number) => ipcRenderer.invoke('shell:stop-navigation', tabId)
+  bridge.openSettings = () => ipcRenderer.invoke('shell:open-settings')
+}
+
+if (isSettings) {
+  bridge.closeSettings = () => ipcRenderer.invoke('shell:close-settings')
+}
+
 if (isWebUI || isNewTab || isSettings) {
-  contextBridge.exposeInMainWorld('shell', {
-    getSettings: () => ipcRenderer.invoke('shell:get-settings'),
-    setSettings: (patch) => ipcRenderer.invoke('shell:set-settings', patch),
-    getNavigationState: (tabId) => ipcRenderer.invoke('shell:get-nav-state', tabId),
-    stopNavigation: (tabId) => ipcRenderer.invoke('shell:stop-navigation', tabId),
-    openSettings: () => ipcRenderer.invoke('shell:open-settings'),
-    closeSettings: () => ipcRenderer.invoke('shell:close-settings'),
-    onThemeUpdated: (callback) => {
-      const listener = (_event, state) => callback(state)
-      ipcRenderer.on('shell:theme-updated', listener)
-      return () => ipcRenderer.removeListener('shell:theme-updated', listener)
-    },
-  })
+  contextBridge.exposeInMainWorld('shell', bridge)
 }
