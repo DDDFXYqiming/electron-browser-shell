@@ -18,6 +18,8 @@ yarn start
 
 ## Windows build
 
+Set `LUMA_NODE_BIN` to select a compatible Node executable. Otherwise the build script uses the `node` command on PATH. No private editor runtime is required.
+
 The one-shot script uses a Node 24 runtime (Node 26 has an extract-zip
 compatibility issue) and produces both a portable zip and a Squirrel installer:
 

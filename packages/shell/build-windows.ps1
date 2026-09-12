@@ -2,15 +2,14 @@
 # Outputs: portable zip + Squirrel installer (Setup.exe)
 #
 # Note: Node 26 has an extract-zip compatibility issue (silent extract
-# failure), so this script prefers the Codex bundled Node (v24) and
-# falls back to the system node if unavailable.
+# failure). Set LUMA_NODE_BIN to select a compatible Node executable;
+# otherwise the executable is resolved from PATH.
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Root
 
-$BundledNode = 'C:\Users\39795\AppData\Local\OpenAI\Codex\runtimes\cua_node\f1bf3cd3a5929acd\bin\node.exe'
-$Node = if (Test-Path $BundledNode) { $BundledNode } else { 'node' }
+$Node = if ($env:LUMA_NODE_BIN) { (Get-Command $env:LUMA_NODE_BIN -ErrorAction Stop).Source } else { (Get-Command node -ErrorAction Stop).Source }
 
 $env:NODE_OPTIONS = '--use-system-ca'
 
