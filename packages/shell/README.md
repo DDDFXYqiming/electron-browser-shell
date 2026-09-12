@@ -9,7 +9,8 @@ A `WebContentsView` is used for tab contents due to its stability for browsing r
 ## Development
 
 ```powershell
-cd C:\Users\39795\Desktop\AI_project\electron-browser-shell
+git clone https://github.com/DDDFXYqiming/electron-browser-shell.git
+cd electron-browser-shell
 yarn install
 cd packages\shell
 yarn start
@@ -17,7 +18,7 @@ yarn start
 
 ## Windows build
 
-The one-shot script uses a Node 24 runtime (system Node 26 has an extract-zip
+The one-shot script uses a Node 24 runtime (Node 26 has an extract-zip
 compatibility issue) and produces both a portable zip and a Squirrel installer:
 
 ```powershell
