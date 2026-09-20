@@ -1,8 +1,26 @@
 const { spawnSync } = require('child_process')
+const fs = require('fs')
 const path = require('path')
 
 const APP_NAME = 'Luma Browser'
-const SCRIPTS_DIR = path.join(__dirname, '..', 'scripts')
+
+// Shortcut scripts must stay outside the app.asar archive: PowerShell is an
+// external process and cannot read files packed inside it. Packaged builds
+// ship them via packagerConfig.extraResource under the resources directory;
+// source runs keep them next to the package root.
+function resolveScriptsDir() {
+  const candidates = []
+  if (process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, 'scripts'))
+  }
+  candidates.push(path.join(__dirname, '..', 'scripts'))
+  const hit = candidates.find((dir) =>
+    fs.existsSync(path.join(dir, 'create-shortcuts.ps1')),
+  )
+  return hit ?? candidates[candidates.length - 1]
+}
+
+const SCRIPTS_DIR = resolveScriptsDir()
 
 function runPowerShell(scriptPath, args) {
   const result = spawnSync(
@@ -21,7 +39,8 @@ function runPowerShell(scriptPath, args) {
     { windowsHide: true, encoding: 'utf8' },
   )
   if (result.status !== 0) {
-    console.error(`[squirrel] ${scriptPath} failed:`, result.stderr || result.stdout)
+    const detail = result.stderr || result.stdout || `exit code ${result.status}`
+    console.error(`[squirrel] ${scriptPath} failed (scripts dir: ${SCRIPTS_DIR}):`, detail)
   }
   return result
 }
@@ -62,4 +81,5 @@ function handleSquirrelEvents() {
 
 module.exports = {
   handleSquirrelEvents,
+  resolveScriptsDir,
 }

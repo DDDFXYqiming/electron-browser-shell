@@ -9,7 +9,7 @@ module.exports = {
     executableName: 'LumaBrowser',
     asar: true,
     icon: ICON,
-    extraResource: ['browser/ui'],
+    extraResource: ['browser/ui', 'scripts'],
   },
   rebuildConfig: {},
   makers: [
